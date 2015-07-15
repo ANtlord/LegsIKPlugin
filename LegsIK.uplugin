@@ -1,0 +1,19 @@
+{
+    "FileVersion" : 3,
+    "FriendlyName" : "Legs IK",
+    "Version" : 1,
+    "VersionName": "1.0",
+    "EngineVersion" : 1579795,
+    "Description" : "Here I describe the content.",
+    "Category" : "ANt content",
+    "CreatedBy" : "ANtlord",
+    "CreatedByURL" : "one-tap.ru",
+    "CanContainContent" : "true",
+    "Modules" :
+    [
+        {
+            "Name" : "LegsIKPlugin",
+            "Type" : "Developer"
+        } 
+    ]
+}

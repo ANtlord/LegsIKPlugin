@@ -1,0 +1,118 @@
+
+// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Runtime/Engine/Classes/Animation/BoneControllers/AnimNode_SkeletalControlBase.h"
+#include "Runtime/Engine/Classes/Animation/BoneControllers/AnimNode_Fabrik.h"
+#include "AnimNode_LegsFabrik.generated.h"
+
+
+/**
+ * Example UStruct declared in a plugin module
+ */
+USTRUCT()
+struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
+{
+    GENERATED_USTRUCT_BODY();
+ 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
+    FName LeftSocketName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
+    FName RightSocketName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
+    FName LeftBallSocketName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
+    FName RightBallSocketName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
+    float TraceOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SkeletalControl) 
+	FBoneReference HipBone;
+
+    // FABRKIK fields.
+	/** Reference frame of Effector Transform. */
+	TEnumAsByte<enum EBoneControlSpace> EffectorTransformSpace;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = EndEffector)
+	TEnumAsByte<enum EBoneRotationSource> EffectorRotationSource;
+
+	/** Tolerance for final tip location delta from EffectorLocation*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+	float Precision;
+
+	/** Maximum number of iterations allowed, to control performance. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+	int32 MaxIterations;
+
+	/** Toggle drawing of axes to debug joint rotation*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+	bool bEnableDebugDraw;
+
+    // Our modifications
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+	FBoneReference LeftTipBone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+	FBoneReference LeftRootBone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+	FBoneReference RightTipBone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+	FBoneReference RightRootBone;
+
+public:
+    virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output) override;
+	virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
+
+    virtual void EvaluateBoneTransforms(
+        USkeletalMeshComponent* SkelComp,
+        const FBoneContainer& RequiredBones,
+        FA2CSPose& MeshBases,
+        TArray<FBoneTransform>& OutBoneTransforms
+    ) override;
+
+    void EvaluateLeftFabrik(
+        USkeletalMeshComponent* SkelComp,
+        const FBoneContainer& RequiredBones,
+        FA2CSPose& MeshBases,
+        TArray<FBoneTransform>& OutBoneTransforms
+    );
+
+    virtual bool IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones) override;
+    FAnimNode_LegsFabrik();
+
+private:
+    void FootTrace(const FName &SocketName, float &OutFootOffset,
+        float &OutHipOffset) const;
+    void UpdateFabrikNode(const FTransform &Transform, const FBoneReference &TipBone,
+        const FBoneReference &RootBone, FAnimNode_Fabrik &OutNode);
+
+    bool GetSocketRotator(const FName &BallSocketName, FRotator &OutRot) const;
+    bool GetSocketProection(const FName &SocketName, FHitResult &OutRV_Hit) const;
+    bool IsValidHipBone;
+
+    USkeletalMeshComponent* Component;
+    AActor * Actor;
+    ACharacter * Character;
+    FA2CSPose * MeshBases;
+
+    FVector HipTargetVector;
+
+    FVector LeftEffectorVector;
+    FVector RightEffectorVector;
+
+    FRotator LeftTarsusRot;
+    FRotator RightTarsusRot;
+
+	TEnumAsByte<enum EBoneControlSpace> HipTranslationSpace;
+    TEnumAsByte<enum EBoneControlSpace> TipTranslationSpace;
+
+    FAnimNode_Fabrik LeftFootFabrik;
+    FAnimNode_Fabrik RightFootFabrik;
+};
