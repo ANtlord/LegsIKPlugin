@@ -14,6 +14,7 @@ IMPLEMENT_MODULE(LegsIKPlugin, UObjectPlugin)
 
 void LegsIKPlugin::StartupModule()
 {
+    UE_LOG(LogTemp, Warning, TEXT("LegsIKPlugin"));
 	// This code will execute after your module is loaded into memory (but after global variables are initialized, of course.)
 }
 

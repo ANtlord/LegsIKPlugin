@@ -18,6 +18,8 @@ FAnimNode_LegsFabrik::FAnimNode_LegsFabrik()
     , LeftEffectorVector(FVector::ZeroVector)
     , RightEffectorVector(FVector::ZeroVector)
     , HipTargetVector(FVector::ZeroVector)
+    , TraceOffset(100.f)
+    , FootAxis(1)
 {
     UE_LOG(LogTemp, Warning, TEXT("Fabrik node has been cunstructed"));
 
@@ -38,13 +40,16 @@ bool FAnimNode_LegsFabrik::GetSocketProection(const FName &SocketName, FHitResul
             
             float CapsuleOffset = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()/2;
             FVector StartVector(SocketLocation.X, SocketLocation.Y, ActorLocation.Z - CapsuleOffset);
-            FVector EndVector(SocketLocation.X, SocketLocation.Y, ActorLocation.Z - CapsuleOffset - 100);
+            FVector EndVector(SocketLocation.X, SocketLocation.Y, ActorLocation.Z - CapsuleOffset - TraceOffset);
             
-            //DrawDebugLine(Actor->GetWorld(), StartVector, EndVector, FColor(1,0,0));
-            //UE_LOG(LogTemp, Warning, TEXT("%s Start: %s, end: %s"), *(SocketName.ToString()), *(StartVector.ToString()), *(EndVector.ToString()));
+            if (bEnableDebugDraw)
+            {
+                DrawDebugSphere(Actor->GetWorld(), SocketLocation, 5, 12, FColor(255,0,0));
+                DrawDebugLine(Actor->GetWorld(), StartVector, EndVector, FColor(255,255,0));
+            }
 
             FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, Actor);
-            RV_TraceParams.bTraceComplex = false;
+            RV_TraceParams.bTraceComplex = true;
             RV_TraceParams.bTraceAsyncScene = true;
             RV_TraceParams.bReturnPhysicalMaterial = false;
 
@@ -65,31 +70,35 @@ bool FAnimNode_LegsFabrik::GetSocketProection(const FName &SocketName, FHitResul
     return false;
 }
 
-void FAnimNode_LegsFabrik::FootTrace(const FName &SocketName,
-    float &OutFootOffset, float &OutHipOffset) const
+bool FAnimNode_LegsFabrik::FootTrace(const FName &SocketName, float DownOffsetThreshold,
+    float &OutHipOffset, FHitResult &OutRV_Hit) const
 {
     if (Actor && Component)
     {
-        FVector ActorLocation = Actor->GetActorLocation();
-        float CapsuleOffset = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()/2;
-        //DrawDebugSphere(Actor->GetWorld(), RV_Hit.Location, 7, 12, FColor(0,0,0));
-
-        float DownOffsetThreshold = ActorLocation.Z - 2.f*CapsuleOffset;
-        //UE_LOG(LogTemp, Warning, TEXT("ActorLocation.Z: %f, CapsuleOffset: %f"), ActorLocation.Z, 2.f*CapsuleOffset);
-        //UE_LOG(LogTemp, Warning, TEXT("DownOffsetThreshold: %f"), DownOffsetThreshold);
+        const float ScaleZ = Character->GetMesh()->GetTransformMatrix().GetScaleVector().Z;
+        
         OutHipOffset = 0.f;
-        FHitResult RV_Hit(ForceInit);
-        bool res = GetSocketProection(SocketName, RV_Hit);
+        bool res = GetSocketProection(SocketName, OutRV_Hit);
         if (res)
         {
-            OutHipOffset = (DownOffsetThreshold - RV_Hit.ImpactPoint.Z) * (-1);
-            //UE_LOG(LogTemp, Warning, TEXT("RV_Hit.ImpactPoint.Z: %f"), RV_Hit.ImpactPoint.Z);
+            if (ScaleZ > 0)
+            {
+                OutHipOffset = ((DownOffsetThreshold - OutRV_Hit.ImpactPoint.Z) * (-1)) / ScaleZ;
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
+            }
         }
-        //UE_LOG(LogTemp, Error, TEXT("%s. Res: %i, %f"), *(SocketName.ToString()), res, OutHipOffset);
-        //UE_LOG(LogTemp, Warning, TEXT("RV_Hit.ImpactPoint.Z: %f. DownOffsetThreshold: %f, OutHipOffset: %f"),
-        //    RV_Hit.ImpactPoint.Z, DownOffsetThreshold, OutHipOffset);
-        OutFootOffset = RV_Hit.ImpactPoint.Z - (DownOffsetThreshold - (-HipTargetVector.Z));
+
+        if (bEnableDebugDraw)
+        {
+            DrawDebugSphere(Actor->GetWorld(), OutRV_Hit.ImpactPoint, 7, 12, FColor(255,255,255));
+        }
+        return res;
     }
+
+    return false;
 }
 
 void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
@@ -105,59 +114,77 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         float LeftFootOffset = 0;
         float RightHipOffset = 0;
         float RightFootOffset = 0;
+        FVector ActorLocation = Actor->GetActorLocation();
+        float CapsuleOffset = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+        float DownOffsetThreshold = ActorLocation.Z - CapsuleOffset;
+        FHitResult LeftRV_Hit(ForceInit);
+        FHitResult RightRV_Hit(ForceInit);
+        const float ScaleZ = Character->GetMesh()->GetTransformMatrix().GetScaleVector().Z;
 
         // Set effectors.
-        FootTrace(LeftSocketName, LeftFootOffset, LeftHipOffset);
-        FootTrace(RightSocketName, RightFootOffset, RightHipOffset);
+        bool LeftRes = FootTrace(LeftSocketName, DownOffsetThreshold, LeftHipOffset, LeftRV_Hit);
+        bool RightRes = FootTrace(RightSocketName, DownOffsetThreshold, RightHipOffset, RightRV_Hit);
 
-        float HipOffset = FMath::Min(LeftHipOffset, RightHipOffset);
+        float HipOffset = 0;
+        if (LeftHipOffset < RightHipOffset && LeftRes)
+        {
+            HipOffset = LeftHipOffset;
+            if (ScaleZ > 0)
+            {
+                RightFootOffset = (RightRV_Hit.ImpactPoint.Z - LeftRV_Hit.ImpactPoint.Z) / ScaleZ;
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
+            }
+        }
+        else
+        {
+            HipOffset = RightHipOffset;
+            if (ScaleZ > 0)
+            {
+                LeftFootOffset = (LeftRV_Hit.ImpactPoint.Z - RightRV_Hit.ImpactPoint.Z) / ScaleZ;
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
+            }
+        }
 
         FRotator LeftRot;
         FRotator RightRot;
         GetSocketRotator(LeftBallSocketName, LeftRot);
         GetSocketRotator(RightBallSocketName, RightRot);
         // This so strange, but it works.
-        RightFootOffset *= -1;
+        //RightFootOffset *= -1;
 
         float DeltaTime = Actor->GetWorld()->GetDeltaSeconds();
 
         // Set target.
-        float OldHipOffset = HipTargetVector.Z;
-        HipTargetVector.Z = HipOffset;
-        HipTargetVector.Z = FMath::FInterpTo(OldHipOffset, HipOffset,
-            DeltaTime, 10);
+        float OldHipOffset = 0.f;
+        float OldOffset = 0.f;
 
-        float OldLeftOffset = LeftEffectorVector.X;
-        LeftEffectorVector.X = FMath::FInterpTo(OldLeftOffset, LeftFootOffset, DeltaTime, 10);
+        if (FootAxis.GetValue() > 0)    // First constant of enum is NONE.
+        {
+            OldHipOffset = HipTargetVector[FootAxis.GetValue()-1];
+            HipTargetVector[FootAxis.GetValue()-1] = FMath::FInterpTo(OldHipOffset, HipOffset,
+                DeltaTime, 10);
 
-        OldLeftOffset = RightEffectorVector.X;
-        RightEffectorVector.X = FMath::FInterpTo(OldLeftOffset, RightFootOffset, DeltaTime, 10);
+            OldOffset = LeftEffectorVector[FootAxis.GetValue()-1];
+            LeftEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(OldOffset, LeftFootOffset, DeltaTime, 10);
+
+            OldOffset = RightEffectorVector[FootAxis.GetValue()-1];
+            RightEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(OldOffset, RightFootOffset, DeltaTime, 10);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Incorrect value of Foot Axis."));
+        }
 
         // Set rotators.
-        UE_LOG(LogTemp, Warning, TEXT("!%s"), *(LeftRot.ToString()))
         LeftTarsusRot = FMath::RInterpTo(LeftTarsusRot, LeftRot, DeltaTime, 10);
         RightTarsusRot = FMath::RInterpTo(RightTarsusRot, RightRot, DeltaTime, 10);
 
-
-        //if (LeftTipBone.IsValid(RequiredBones) && LeftRootBone.IsValid(RequiredBones))
-        //{
-            //FootFabrik(FTransform(LeftEffectorVector), LeftTipBone, LeftRootBone, RequiredBones, OutBoneTransforms);
-        //}
-        //else
-        //{
-        //    UE_LOG(LogTemp, Warning, TEXT("LeftTipBone is valid: %i, LeftRootBone is valid: %i"),
-        //        LeftTipBone.IsValid(RequiredBones), LeftRootBone.IsValid(RequiredBones));
-        //}
-        //if (RightTipBone.IsValid(RequiredBones) && RightRootBone.IsValid(RequiredBones))
-        //{
-        //    FootFabrik(FTransform(LeftEffectorVector), RightTipBone, RightRootBone, RequiredBones, OutBoneTransforms);
-        //}
-        //else
-        //{
-        //    UE_LOG(LogTemp, Warning, TEXT("RightTipBone is valid: %i, RightRootBone is valid: %i"),
-        //        RightTipBone.IsValid(RequiredBones), RightRootBone.IsValid(RequiredBones));
-        //}
-        // Transformations.
         if (HipBone.IsValid(RequiredBones))
         {
             FTransform NewBoneTM = MeshBases.GetComponentSpaceTransform(HipBone.BoneIndex);
@@ -168,32 +195,10 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
                 NewBoneTM, HipBone.BoneIndex, HipTranslationSpace);
             OutBoneTransforms.Add(FBoneTransform(HipBone.BoneIndex, NewBoneTM));
         }
-
-        
-        //else
-        //{
-        //    UE_LOG(LogTemp, Error, TEXT("!!!HipBone doesn't exist, please point it in Node parameters."));
-        //}
-
-        //UE_LOG(LogTemp, Warning, TEXT("%i, %i, %i"), LeftTipBone.BoneIndex, LeftRootBone.BoneIndex, HipBone.BoneIndex);
-
-        //int32 LastIndex = INDEX_NONE;
-
-        //UE_LOG(LogTemp, Warning, TEXT("OutBoneTransforms.Num() - %i"), OutBoneTransforms.Num());
-        //for (const auto &item: OutBoneTransforms)
-        //{
-        //    UE_LOG(LogTemp, Warning, TEXT("%i"), item.BoneIndex);
-        //    if (!(item.BoneIndex >= LastIndex))
-        //    {
-        //        OutBoneTransforms.RemoveAt(0, OutBoneTransforms.Num());
-        //        break;
-        //    }
-        //}
-
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("some shit happens"));
+        UE_LOG(LogTemp, Error, TEXT("Legs IK is not working"));
     }
 }
 
@@ -241,7 +246,6 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
             && Actor->GetVelocity().Size() < MAX_RENDER_SPEED)
         {
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
-            //EvaluateLeftFabrik(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
             UpdateFabrikNode(FTransform(LeftEffectorVector), LeftTipBone, LeftRootBone, LeftFootFabrik);
             LeftFootFabrik.EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
             checkSlow(!ContainsNaN(BoneTransforms));
@@ -346,15 +350,4 @@ bool FAnimNode_LegsFabrik::IsValidToEvaluate(const USkeleton* Skeleton, const FB
         }
     }
     return Flag;
-}
-
-void FAnimNode_LegsFabrik::EvaluateLeftFabrik(
-    USkeletalMeshComponent* SkelComp,
-    const FBoneContainer& RequiredBones,
-    FA2CSPose& MeshBases,
-    TArray<FBoneTransform>& OutBoneTransforms
-    )
-{
-    UpdateFabrikNode(FTransform(LeftEffectorVector), LeftTipBone, LeftRootBone, LeftFootFabrik);
-    LeftFootFabrik.EvaluateBoneTransforms(Component, RequiredBones, MeshBases, OutBoneTransforms);
 }
