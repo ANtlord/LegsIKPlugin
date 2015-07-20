@@ -31,44 +31,47 @@ struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
     float TraceOffset;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SkeletalControl) 
-	FBoneReference HipBone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SkeletalControl) 
+    FBoneReference HipBone;
 
     // FABRKIK fields.
-	/** Reference frame of Effector Transform. */
-	TEnumAsByte<enum EBoneControlSpace> EffectorTransformSpace;
+    /** Reference frame of Effector Transform. */
+    TEnumAsByte<enum EBoneControlSpace> EffectorTransformSpace;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = EndEffector)
-	TEnumAsByte<enum EBoneRotationSource> EffectorRotationSource;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = EndEffector)
+    TEnumAsByte<enum EAxis> FootAxis;
 
-	/** Tolerance for final tip location delta from EffectorLocation*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
-	float Precision;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = EndEffector)
+    TEnumAsByte<enum EBoneRotationSource> EffectorRotationSource;
 
-	/** Maximum number of iterations allowed, to control performance. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
-	int32 MaxIterations;
+    /** Tolerance for final tip location delta from EffectorLocation*/
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+    float Precision;
 
-	/** Toggle drawing of axes to debug joint rotation*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
-	bool bEnableDebugDraw;
+    /** Maximum number of iterations allowed, to control performance. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+    int32 MaxIterations;
+
+    /** Toggle drawing of axes to debug joint rotation*/
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
+    bool bEnableDebugDraw;
 
     // Our modifications
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
-	FBoneReference LeftTipBone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+    FBoneReference LeftTipBone;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
-	FBoneReference LeftRootBone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+    FBoneReference LeftRootBone;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
-	FBoneReference RightTipBone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+    FBoneReference RightTipBone;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
-	FBoneReference RightRootBone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+    FBoneReference RightRootBone;
 
 public:
     virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output) override;
-	virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
+    virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
 
     virtual void EvaluateBoneTransforms(
         USkeletalMeshComponent* SkelComp,
@@ -88,8 +91,8 @@ public:
     FAnimNode_LegsFabrik();
 
 private:
-    void FootTrace(const FName &SocketName, float &OutFootOffset,
-        float &OutHipOffset) const;
+    bool FootTrace(const FName &SocketName, float DownOffsetThreshold,
+        float &OutHipOffset, FHitResult &OutRV_Hit) const;
     void UpdateFabrikNode(const FTransform &Transform, const FBoneReference &TipBone,
         const FBoneReference &RootBone, FAnimNode_Fabrik &OutNode);
 
@@ -110,7 +113,7 @@ private:
     FRotator LeftTarsusRot;
     FRotator RightTarsusRot;
 
-	TEnumAsByte<enum EBoneControlSpace> HipTranslationSpace;
+    TEnumAsByte<enum EBoneControlSpace> HipTranslationSpace;
     TEnumAsByte<enum EBoneControlSpace> TipTranslationSpace;
 
     FAnimNode_Fabrik LeftFootFabrik;

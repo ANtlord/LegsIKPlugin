@@ -21,10 +21,10 @@ FLinearColor UAnimGraphNode_LegsFabrik::GetNodeTitleColor() const
 
 FString UAnimGraphNode_LegsFabrik::GetNodeCategory() const
 {
-    return FString("Victory Anim Nodes");
+    return FString("IK nodes.");
 }
 
 FText UAnimGraphNode_LegsFabrik::GetControllerDescription() const
 {
-    return FText::FromString(FString("qwe"));
+    return FText::FromString(FString("Adds IK for pointed bones by pointed sockets."));
 }
