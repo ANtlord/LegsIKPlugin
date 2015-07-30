@@ -126,10 +126,10 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         bool RightRes = FootTrace(RightSocketName, DownOffsetThreshold, RightHipOffset, RightRV_Hit);
 
         float HipOffset = 0;
-        if (LeftHipOffset < RightHipOffset && LeftRes)
+        if (LeftRes && LeftHipOffset < RightHipOffset)
         {
             HipOffset = LeftHipOffset;
-            if (ScaleZ > 0)
+            if (RightRes && ScaleZ > 0)
             {
                 RightFootOffset = (RightRV_Hit.ImpactPoint.Z - LeftRV_Hit.ImpactPoint.Z) / ScaleZ;
             }
@@ -138,10 +138,10 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
                 UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
             }
         }
-        else
+        else if (RightRes)
         {
             HipOffset = RightHipOffset;
-            if (ScaleZ > 0)
+            if (LeftRes && ScaleZ > 0)
             {
                 LeftFootOffset = (LeftRV_Hit.ImpactPoint.Z - RightRV_Hit.ImpactPoint.Z) / ScaleZ;
             }
@@ -232,6 +232,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
 #endif // #if WITH_EDITORONLY_DATA
 
         TArray<FBoneTransform> BoneTransforms;
+        // Animates pelvis transformation.
         EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
 
         checkSlow(!ContainsNaN(BoneTransforms));
@@ -245,6 +246,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
         if (Component && Actor && Character && !Character->GetCharacterMovement()->IsFalling()
             && Actor->GetVelocity().Size() < MAX_RENDER_SPEED)
         {
+            // Animates left foot IK.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
             UpdateFabrikNode(FTransform(LeftEffectorVector), LeftTipBone, LeftRootBone, LeftFootFabrik);
             LeftFootFabrik.EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
@@ -256,6 +258,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
                 Output.Pose.LocalBlendCSBoneTransforms(BoneTransforms, BlendWeight);
             }
 
+            // Animates right foot IK.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
             UpdateFabrikNode(FTransform(RightEffectorVector), RightTipBone, RightRootBone, RightFootFabrik);
             RightFootFabrik.EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
@@ -268,6 +271,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
             }
 
             //-----------------------
+            // Animates left tarsus rotation.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
 
             FTransform NewBoneTM = Output.Pose.GetComponentSpaceTransform(LeftTipBone.BoneIndex);
@@ -285,6 +289,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
                 Output.Pose.LocalBlendCSBoneTransforms(BoneTransforms, BlendWeight);
             }
 
+            // Animates right tarsus rotation.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
             NewBoneTM = Output.Pose.GetComponentSpaceTransform(RightTipBone.BoneIndex);
             FAnimationRuntime::ConvertCSTransformToBoneSpace(Component, Output.Pose,
