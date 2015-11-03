@@ -1,5 +1,5 @@
 #include "StandAlonePrivatePCH.h"
-#include "Runtime/Engine/Classes/Animation/BoneControllers/AnimNode_Fabrik.h"
+#include "Runtime/AnimGraphRuntime/Public/BoneControllers/AnimNode_Fabrik.h"
 #include "AnimNode_LegsFabrik.h"
 
 const float MAX_RENDER_SPEED = 100;
@@ -102,8 +102,8 @@ bool FAnimNode_LegsFabrik::FootTrace(const FName &SocketName, float DownOffsetTh
 }
 
 void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
-    USkeletalMeshComponent* SkelComp, const FBoneContainer& RequiredBones,
-    FA2CSPose& MeshBases, TArray<FBoneTransform>& OutBoneTransforms)
+    USkeletalMeshComponent* SkelComp, FCSPose<FCompactPose>& MeshBases,
+    TArray<FBoneTransform>& OutBoneTransforms)
 {
     Component = SkelComp;
     if (Component && Actor && Character && !Character->GetCharacterMovement()->IsFalling()
@@ -185,16 +185,18 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         LeftTarsusRot = FMath::RInterpTo(LeftTarsusRot, LeftRot, DeltaTime, 10);
         RightTarsusRot = FMath::RInterpTo(RightTarsusRot, RightRot, DeltaTime, 10);
 
-        if (HipBone.IsValid(RequiredBones))
-        {
-            FTransform NewBoneTM = MeshBases.GetComponentSpaceTransform(HipBone.BoneIndex);
+        //if (HipBone.IsValid(RequiredBones))
+        //{
+            const FBoneContainer& BoneContainer = MeshBases.GetPose().GetBoneContainer();
+            FCompactPoseBoneIndex CompactPoseBoneIndex = HipBone.GetCompactPoseIndex(BoneContainer);
+            FTransform NewBoneTM = MeshBases.GetComponentSpaceTransform(CompactPoseBoneIndex);
             FAnimationRuntime::ConvertCSTransformToBoneSpace(SkelComp, MeshBases,
-                NewBoneTM, HipBone.BoneIndex, HipTranslationSpace);
+                NewBoneTM, CompactPoseBoneIndex, HipTranslationSpace);
             NewBoneTM.AddToTranslation(HipTargetVector);
             FAnimationRuntime::ConvertBoneSpaceTransformToCS(Component, MeshBases,
-                NewBoneTM, HipBone.BoneIndex, HipTranslationSpace);
-            OutBoneTransforms.Add(FBoneTransform(HipBone.BoneIndex, NewBoneTM));
-        }
+                NewBoneTM, CompactPoseBoneIndex, HipTranslationSpace);
+            OutBoneTransforms.Add(FBoneTransform(CompactPoseBoneIndex, NewBoneTM));
+        //}
     }
     else
     {
@@ -233,7 +235,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
 
         TArray<FBoneTransform> BoneTransforms;
         // Animates pelvis transformation.
-        EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
+        EvaluateBoneTransforms(Component, Output.Pose, BoneTransforms);
 
         checkSlow(!ContainsNaN(BoneTransforms));
 
@@ -249,7 +251,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
             // Animates left foot IK.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
             UpdateFabrikNode(FTransform(LeftEffectorVector), LeftTipBone, LeftRootBone, LeftFootFabrik);
-            LeftFootFabrik.EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
+            LeftFootFabrik.EvaluateBoneTransforms(Component, Output.Pose, BoneTransforms);
             checkSlow(!ContainsNaN(BoneTransforms));
 
             if (BoneTransforms.Num() > 0)
@@ -261,7 +263,7 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
             // Animates right foot IK.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
             UpdateFabrikNode(FTransform(RightEffectorVector), RightTipBone, RightRootBone, RightFootFabrik);
-            RightFootFabrik.EvaluateBoneTransforms(Component, Output.AnimInstance->RequiredBones, Output.Pose, BoneTransforms);
+            RightFootFabrik.EvaluateBoneTransforms(Component, Output.Pose, BoneTransforms);
             checkSlow(!ContainsNaN(BoneTransforms));
 
             if (BoneTransforms.Num() > 0)
@@ -274,15 +276,18 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
             // Animates left tarsus rotation.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
 
-            FTransform NewBoneTM = Output.Pose.GetComponentSpaceTransform(LeftTipBone.BoneIndex);
+            const FBoneContainer& BoneContainer = MeshBases->GetPose().GetBoneContainer();
+            FCompactPoseBoneIndex CompactPoseBoneIndex = LeftTipBone.GetCompactPoseIndex(BoneContainer);
+            FTransform NewBoneTM = Output.Pose.GetComponentSpaceTransform(CompactPoseBoneIndex);
+
             FAnimationRuntime::ConvertCSTransformToBoneSpace(Component, Output.Pose,
-                NewBoneTM, LeftTipBone.BoneIndex, TipTranslationSpace);
+                NewBoneTM, CompactPoseBoneIndex, TipTranslationSpace);
             const FQuat BoneQuat(LeftTarsusRot);
             NewBoneTM.SetRotation(BoneQuat * NewBoneTM.GetRotation());
             FAnimationRuntime::ConvertBoneSpaceTransformToCS(Component, Output.Pose,
-                NewBoneTM, LeftTipBone.BoneIndex, TipTranslationSpace);
+                NewBoneTM, CompactPoseBoneIndex, TipTranslationSpace);
 
-            BoneTransforms.Add(FBoneTransform(LeftTipBone.BoneIndex, NewBoneTM));
+            BoneTransforms.Add(FBoneTransform(CompactPoseBoneIndex, NewBoneTM));
             if (BoneTransforms.Num() > 0)
             {
                 const float BlendWeight = FMath::Clamp<float>(ActualAlpha, 0.f, 1.f);
@@ -291,15 +296,18 @@ void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext& Ou
 
             // Animates right tarsus rotation.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
-            NewBoneTM = Output.Pose.GetComponentSpaceTransform(RightTipBone.BoneIndex);
+
+            CompactPoseBoneIndex = RightTipBone.GetCompactPoseIndex(BoneContainer);
+            NewBoneTM = Output.Pose.GetComponentSpaceTransform(
+                RightTipBone.GetCompactPoseIndex(BoneContainer));
             FAnimationRuntime::ConvertCSTransformToBoneSpace(Component, Output.Pose,
-                NewBoneTM, RightTipBone.BoneIndex, TipTranslationSpace);
+                NewBoneTM, CompactPoseBoneIndex, TipTranslationSpace);
             const FQuat BoneQuat2(RightTarsusRot);
             NewBoneTM.SetRotation(BoneQuat2 * NewBoneTM.GetRotation());
             FAnimationRuntime::ConvertBoneSpaceTransformToCS(Component, Output.Pose,
-                NewBoneTM, RightTipBone.BoneIndex, TipTranslationSpace);
+                NewBoneTM, CompactPoseBoneIndex, TipTranslationSpace);
 
-            BoneTransforms.Add(FBoneTransform(RightTipBone.BoneIndex, NewBoneTM));
+            BoneTransforms.Add(FBoneTransform(CompactPoseBoneIndex, NewBoneTM));
             if (BoneTransforms.Num() > 0)
             {
                 const float BlendWeight = FMath::Clamp<float>(ActualAlpha, 0.f, 1.f);

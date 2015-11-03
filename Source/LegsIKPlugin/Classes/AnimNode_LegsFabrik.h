@@ -1,10 +1,8 @@
-
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
-#include "Runtime/Engine/Classes/Animation/BoneControllers/AnimNode_SkeletalControlBase.h"
-#include "Runtime/Engine/Classes/Animation/BoneControllers/AnimNode_Fabrik.h"
+#include "Runtime/AnimGraphRuntime/Public/BoneControllers/AnimNode_SkeletalControlBase.h"
+#include "Runtime/AnimGraphRuntime/Public/BoneControllers/AnimNode_Fabrik.h"
+#include "Runtime/Engine/Classes/GameFramework/Character.h"
 #include "AnimNode_LegsFabrik.generated.h"
 
 
@@ -75,8 +73,7 @@ public:
 
     virtual void EvaluateBoneTransforms(
         USkeletalMeshComponent* SkelComp,
-        const FBoneContainer& RequiredBones,
-        FA2CSPose& MeshBases,
+        FCSPose<FCompactPose>& MeshBases,
         TArray<FBoneTransform>& OutBoneTransforms
     ) override;
 
@@ -103,7 +100,7 @@ private:
     USkeletalMeshComponent* Component;
     AActor * Actor;
     ACharacter * Character;
-    FA2CSPose * MeshBases;
+    FCSPose<FCompactPose> * MeshBases;
 
     FVector HipTargetVector;
 

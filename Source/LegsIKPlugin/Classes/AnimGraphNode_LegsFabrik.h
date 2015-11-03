@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "AnimGraphNode_SkeletalControlBase.h"
+#include "Editor/AnimGraph/Classes/AnimGraphNode_SkeletalControlBase.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "AnimNode_LegsFabrik.h"
 
