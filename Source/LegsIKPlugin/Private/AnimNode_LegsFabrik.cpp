@@ -12,6 +12,7 @@ FAnimNode_LegsFabrik::FAnimNode_LegsFabrik()
     , Precision(1.f)
     , MaxIterations(10)
     , bEnableDebugDraw(false)
+    , bDoInverseRightFootOffset(false)
     , EffectorTransformSpace(BCS_BoneSpace)
     , TipTranslationSpace(BCS_WorldSpace)
     , EffectorRotationSource(BRS_KeepLocalSpaceRotation)
@@ -155,8 +156,9 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         FRotator RightRot;
         GetSocketRotator(LeftBallSocketName, LeftRot);
         GetSocketRotator(RightBallSocketName, RightRot);
-        // This so strange, but it works.
-        //RightFootOffset *= -1;
+        if (bDoInverseRightFootOffset) {
+            RightFootOffset *= -1;
+        }
 
         float DeltaTime = Actor->GetWorld()->GetDeltaSeconds();
 
@@ -166,8 +168,8 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
 
         if (FootAxis.GetValue() > 0)    // First constant of enum is NONE.
         {
-            OldHipOffset = HipTargetVector[FootAxis.GetValue()-1];
-            HipTargetVector[FootAxis.GetValue()-1] = FMath::FInterpTo(OldHipOffset, HipOffset,
+            OldHipOffset = HipTargetVector.Z;
+            HipTargetVector.Z = FMath::FInterpTo(OldHipOffset, HipOffset,
                 DeltaTime, 10);
 
             OldOffset = LeftEffectorVector[FootAxis.GetValue()-1];
