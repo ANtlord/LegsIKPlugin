@@ -56,6 +56,10 @@ struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Solver)
     bool bEnableDebugDraw;
 
+    /** Inverse offset of right foot. Some models need it. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
+    bool bDoInverseRightFootOffset;
+
     // Our modifications
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
     FBoneReference LeftTipBone;
