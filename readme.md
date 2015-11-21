@@ -15,13 +15,14 @@ It means, that you have animation blueprint for character, that needs IK.
 5. Choose root bone.
 6. Choose tarsus bone for left and right foots.
 7. Choose axis for moving foot. Just try every axis, but, usually it's Z.
+8. Check how works IK for right legs. It can need for inverse offset. This option is available.
 
 Screenshots
 ---
-![Demo](https://forums.unrealengine.com/attachment.php?attachmentid=44744&d=1435035105)
-![Demo](https://forums.unrealengine.com/attachment.php?attachmentid=44745&d=1435035159)
-![Demo](https://forums.unrealengine.com/attachment.php?attachmentid=44746&d=1435035176)
-![Demo](https://forums.unrealengine.com/attachment.php?attachmentid=44747&d=1435035189)
+![Demo](https://raw.githubusercontent.com/ANtlord/LegsIKPlugin/unreal-engine-4.9-support/Screenshots/ik1.png)
+![Demo](https://raw.githubusercontent.com/ANtlord/LegsIKPlugin/unreal-engine-4.9-support/Screenshots/ik2.png)
+![Demo](https://raw.githubusercontent.com/ANtlord/LegsIKPlugin/unreal-engine-4.9-support/Screenshots/ik3.png)
+![Demo](https://raw.githubusercontent.com/ANtlord/LegsIKPlugin/unreal-engine-4.9-support/Screenshots/ik4.png)
 
 Issues
 ---
