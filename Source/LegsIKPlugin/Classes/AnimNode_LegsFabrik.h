@@ -72,11 +72,10 @@ struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
     FBoneReference RightRootBone;
 
 public:
-    virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output) override;
+//    virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output) override;
     virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
 
-    virtual void EvaluateBoneTransforms(
-        USkeletalMeshComponent* SkelComp,
+    virtual void EvaluateBoneTransforms(USkeletalMeshComponent* SkelComp,
         FCSPose<FCompactPose>& MeshBases,
         TArray<FBoneTransform>& OutBoneTransforms
     ) override;
@@ -88,8 +87,11 @@ public:
         TArray<FBoneTransform>& OutBoneTransforms
     );
 
+    void Evaluate(FPoseContext &Output) override;
+
     virtual bool IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones) override;
     FAnimNode_LegsFabrik();
+
 
 private:
     bool FootTrace(const FName &SocketName, float DownOffsetThreshold,
@@ -104,7 +106,7 @@ private:
     USkeletalMeshComponent* Component;
     AActor * Actor;
     ACharacter * Character;
-    FCSPose<FCompactPose> * MeshBases;
+    FCompactPose * MeshBases;
 
     FVector HipTargetVector;
 
@@ -119,4 +121,6 @@ private:
 
     FAnimNode_Fabrik LeftFootFabrik;
     FAnimNode_Fabrik RightFootFabrik;
+
+//    void UpdateInternal(const FAnimationUpdateContext& Output) override;
 };
