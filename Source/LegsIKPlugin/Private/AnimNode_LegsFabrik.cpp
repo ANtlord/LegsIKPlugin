@@ -169,7 +169,16 @@ void FAnimNode_LegsFabrik::SetLegsEffectors(const LegsOffsets &legsOffsets, floa
                 OldOffset, legsOffsets.RightFootOffset, DeltaTime, INTERP_TIME);
 }
 
+void FAnimNode_LegsFabrik::RotateTarsuses(const float DeltaTime)
+{
+    FRotator LeftRot;
+    FRotator RightRot;
+    GetSocketRotator(LeftBallSocketName, LeftRot);
+    GetSocketRotator(RightBallSocketName, RightRot);
 
+    LeftTarsusRot = FMath::RInterpTo(LeftTarsusRot, LeftRot, DeltaTime, INTERP_TIME);
+    RightTarsusRot = FMath::RInterpTo(RightTarsusRot, RightRot, DeltaTime, INTERP_TIME);
+}
 
 void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         USkeletalMeshComponent* SkelComp, FCSPose<FCompactPose> &MeshBases,
@@ -186,14 +195,7 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         float HipOffset = 0;
         SetLegsOffset(legsOffsets, HipOffset, DownOffsetThreshold);
 
-        // Set effectors.
-        FRotator LeftRot;
-        FRotator RightRot;
-        GetSocketRotator(LeftBallSocketName, LeftRot);
-        GetSocketRotator(RightBallSocketName, RightRot);
-
         float DeltaTime = Actor->GetWorld()->GetDeltaSeconds();
-
         if (FootAxis.GetValue() > 0)    // First constant of enum is NONE.
         {
             SetLegsEffectors(legsOffsets, HipOffset, DeltaTime);
@@ -202,10 +204,7 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         {
             UE_LOG(LogTemp, Error, TEXT("Incorrect value of Foot Axis."));
         }
-
-        // Set rotators.
-        LeftTarsusRot = FMath::RInterpTo(LeftTarsusRot, LeftRot, DeltaTime, INTERP_TIME);
-        RightTarsusRot = FMath::RInterpTo(RightTarsusRot, RightRot, DeltaTime, INTERP_TIME);
+        RotateTarsuses(DeltaTime);
 
         //if (HipBone.IsValid(RequiredBones))
         //{
