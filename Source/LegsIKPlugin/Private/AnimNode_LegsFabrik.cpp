@@ -105,6 +105,53 @@ bool FAnimNode_LegsFabrik::FootTrace(const FName &SocketName, float DownOffsetTh
     return false;
 }
 
+struct LegsOffsets
+{
+    float LeftHipOffset = 0;
+    float LeftFootOffset = 0;
+    float RightHipOffset = 0;
+    float RightFootOffset = 0;
+};
+
+void FAnimNode_LegsFabrik::SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold)
+{
+    FHitResult LeftRV_Hit(ForceInit);
+    FHitResult RightRV_Hit(ForceInit);
+    const float ScaleZ = Character->GetActorScale().Z;
+    bool LeftRes = FootTrace(LeftSocketName, DownOffsetThreshold, legsOffsets.LeftHipOffset, LeftRV_Hit);
+    bool RightRes = FootTrace(RightSocketName, DownOffsetThreshold, legsOffsets.RightHipOffset, RightRV_Hit);
+    outHipOffset = 0;
+
+    if (LeftRes && legsOffsets.LeftHipOffset < legsOffsets.RightHipOffset)
+    {
+        outHipOffset = legsOffsets.LeftHipOffset;
+        if (RightRes && ScaleZ > 0)
+        {
+            legsOffsets.RightFootOffset = (RightRV_Hit.ImpactPoint.Z - LeftRV_Hit.ImpactPoint.Z) / ScaleZ;
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
+        }
+    }
+    else if (RightRes)
+    {
+        outHipOffset = legsOffsets.RightHipOffset;
+        if (LeftRes && ScaleZ > 0)
+        {
+            legsOffsets.LeftFootOffset = (LeftRV_Hit.ImpactPoint.Z - RightRV_Hit.ImpactPoint.Z) / ScaleZ;
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
+        }
+    }
+
+    if (bDoInverseRightFootOffset) {
+        legsOffsets.RightFootOffset *= -1;
+    }
+}
+
 void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         USkeletalMeshComponent* SkelComp, FCSPose<FCompactPose> &MeshBases,
         TArray<FBoneTransform>& OutBoneTransforms)
@@ -114,56 +161,17 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         && Actor->GetVelocity().Size() < MAX_RENDER_SPEED)
     {
         // Get hip offset and offset of foots.
-        float LeftHipOffset = 0;
-        float LeftFootOffset = 0;
-        float RightHipOffset = 0;
-        float RightFootOffset = 0;
-        FVector ActorLocation = Actor->GetActorLocation();
+        LegsOffsets legsOffsets;
         float CapsuleOffset = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-        float DownOffsetThreshold = ActorLocation.Z - CapsuleOffset;
-        FHitResult LeftRV_Hit(ForceInit);
-        FHitResult RightRV_Hit(ForceInit);
-//        const float ScaleZ = Character->GetMesh()->GetTransformMatrix().GetScaleVector().Z;
-        const float ScaleZ = Character->GetActorScale().Z;
-
+        float DownOffsetThreshold = Actor->GetActorLocation().Z - CapsuleOffset;
+        float HipOffset = 0;
+        SetLegsOffset(legsOffsets, HipOffset, DownOffsetThreshold);
 
         // Set effectors.
-        bool LeftRes = FootTrace(LeftSocketName, DownOffsetThreshold, LeftHipOffset, LeftRV_Hit);
-        bool RightRes = FootTrace(RightSocketName, DownOffsetThreshold, RightHipOffset, RightRV_Hit);
-
-        float HipOffset = 0;
-        if (LeftRes && LeftHipOffset < RightHipOffset)
-        {
-            HipOffset = LeftHipOffset;
-            if (RightRes && ScaleZ > 0)
-            {
-                RightFootOffset = (RightRV_Hit.ImpactPoint.Z - LeftRV_Hit.ImpactPoint.Z) / ScaleZ;
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
-            }
-        }
-        else if (RightRes)
-        {
-            HipOffset = RightHipOffset;
-            if (LeftRes && ScaleZ > 0)
-            {
-                LeftFootOffset = (LeftRV_Hit.ImpactPoint.Z - RightRV_Hit.ImpactPoint.Z) / ScaleZ;
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Your scaling by Z of mesh less than 0. Bad thing."))
-            }
-        }
-
         FRotator LeftRot;
         FRotator RightRot;
         GetSocketRotator(LeftBallSocketName, LeftRot);
         GetSocketRotator(RightBallSocketName, RightRot);
-        if (bDoInverseRightFootOffset) {
-            RightFootOffset *= -1;
-        }
 
         float DeltaTime = Actor->GetWorld()->GetDeltaSeconds();
 
@@ -181,11 +189,11 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
 
             OldOffset = LeftEffectorVector[FootAxis.GetValue()-1];
             LeftEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
-                        OldOffset, LeftFootOffset, DeltaTime, INTERP_TIME);
+                        OldOffset, legsOffsets.LeftFootOffset, DeltaTime, INTERP_TIME);
 
             OldOffset = RightEffectorVector[FootAxis.GetValue()-1];
             RightEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
-                        OldOffset, RightFootOffset, DeltaTime, INTERP_TIME);
+                        OldOffset, legsOffsets.RightFootOffset, DeltaTime, INTERP_TIME);
         }
         else
         {

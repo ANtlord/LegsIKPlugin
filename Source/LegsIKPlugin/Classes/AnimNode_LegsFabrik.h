@@ -5,6 +5,7 @@
 #include "Runtime/Engine/Classes/GameFramework/Character.h"
 #include "AnimNode_LegsFabrik.generated.h"
 
+struct LegsOffsets;
 
 /**
  * Example UStruct declared in a plugin module
@@ -94,6 +95,7 @@ public:
 
 
 private:
+    void SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold);
     bool FootTrace(const FName &SocketName, float DownOffsetThreshold,
         float &OutHipOffset, FHitResult &OutRV_Hit) const;
     void UpdateFabrikNode(const FTransform &Transform, const FBoneReference &TipBone,
