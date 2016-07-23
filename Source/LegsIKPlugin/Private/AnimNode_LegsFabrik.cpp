@@ -4,6 +4,7 @@
 #include "AnimNode_LegsFabrik.h"
 
 const float MAX_RENDER_SPEED = 100;
+const float INTERP_TIME = 10;
 FAnimNode_LegsFabrik::FAnimNode_LegsFabrik()
     : Component(nullptr)
     , Actor(nullptr)
@@ -113,7 +114,7 @@ struct LegsOffsets
     float RightFootOffset = 0;
 };
 
-void FAnimNode_LegsFabrik::SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold)
+void FAnimNode_LegsFabrik::SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold) const
 {
     FHitResult LeftRV_Hit(ForceInit);
     FHitResult RightRV_Hit(ForceInit);
@@ -152,6 +153,24 @@ void FAnimNode_LegsFabrik::SetLegsOffset(LegsOffsets &legsOffsets, float &outHip
     }
 }
 
+void FAnimNode_LegsFabrik::SetLegsEffectors(const LegsOffsets &legsOffsets, float HipOffset, float DeltaTime)
+{
+    float OldHipOffset = HipTargetVector.Z;
+
+    HipTargetVector.Z = FMath::FInterpTo(OldHipOffset, HipOffset,
+        DeltaTime, INTERP_TIME);
+
+    float OldOffset = LeftEffectorVector[FootAxis.GetValue()-1];
+    LeftEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
+                OldOffset, legsOffsets.LeftFootOffset, DeltaTime, INTERP_TIME);
+
+    OldOffset = RightEffectorVector[FootAxis.GetValue()-1];
+    RightEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
+                OldOffset, legsOffsets.RightFootOffset, DeltaTime, INTERP_TIME);
+}
+
+
+
 void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         USkeletalMeshComponent* SkelComp, FCSPose<FCompactPose> &MeshBases,
         TArray<FBoneTransform>& OutBoneTransforms)
@@ -175,25 +194,9 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
 
         float DeltaTime = Actor->GetWorld()->GetDeltaSeconds();
 
-        // Set target.
-        float OldHipOffset = 0.f;
-        float OldOffset = 0.f;
-
-        const float INTERP_TIME = 10;
-
         if (FootAxis.GetValue() > 0)    // First constant of enum is NONE.
         {
-            OldHipOffset = HipTargetVector.Z;
-            HipTargetVector.Z = FMath::FInterpTo(OldHipOffset, HipOffset,
-                DeltaTime, INTERP_TIME);
-
-            OldOffset = LeftEffectorVector[FootAxis.GetValue()-1];
-            LeftEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
-                        OldOffset, legsOffsets.LeftFootOffset, DeltaTime, INTERP_TIME);
-
-            OldOffset = RightEffectorVector[FootAxis.GetValue()-1];
-            RightEffectorVector[FootAxis.GetValue()-1] = FMath::FInterpTo(
-                        OldOffset, legsOffsets.RightFootOffset, DeltaTime, INTERP_TIME);
+            SetLegsEffectors(legsOffsets, HipOffset, DeltaTime);
         }
         else
         {
@@ -244,19 +247,16 @@ void FAnimNode_LegsFabrik::UpdateFabrikNode(const FTransform &Transform,
 
 bool FAnimNode_LegsFabrik::GetSocketRotator(const FName &BallSocketName, FRotator &OutRot) const
 {
-    if (Actor && Component)
+    FHitResult RV_Hit(ForceInit);
+    if (GetSocketProection(BallSocketName, RV_Hit))
     {
-        FHitResult RV_Hit(ForceInit);
-        if (GetSocketProection(BallSocketName, RV_Hit))
-        {
-            // Conversion of normal to rotator.
-            FVector Normal = RV_Hit.Normal;
-            OutRot.Pitch = (180.f)/PI * FMath::Atan2(Normal.X, Normal.Z)*(-1);
-            OutRot.Yaw = 0;
-            OutRot.Roll = (180.f)/PI * FMath::Atan2(Normal.Y, Normal.Z);
+        // Conversion of normal to rotator.
+        FVector Normal = RV_Hit.Normal;
+        OutRot.Pitch = (180.f)/PI * FMath::Atan2(Normal.X, Normal.Z)*(-1);
+        OutRot.Yaw = 0;
+        OutRot.Roll = (180.f)/PI * FMath::Atan2(Normal.Y, Normal.Z);
 
-            return true;
-        }
+        return true;
     }
 
     return false;

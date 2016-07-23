@@ -95,7 +95,8 @@ public:
 
 
 private:
-    void SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold);
+    void SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold) const;
+    void SetLegsEffectors(const LegsOffsets &legsOffsets, float HipOffset, float DeltaTime);
     bool FootTrace(const FName &SocketName, float DownOffsetThreshold,
         float &OutHipOffset, FHitResult &OutRV_Hit) const;
     void UpdateFabrikNode(const FTransform &Transform, const FBoneReference &TipBone,
