@@ -7,14 +7,16 @@
 
 struct LegsOffsets;
 
+//struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
+
 /**
  * Example UStruct declared in a plugin module
  */
 USTRUCT()
-struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
+struct FAnimNode_LegsFabrik : public FAnimNode_Base
 {
-    GENERATED_USTRUCT_BODY();
- 
+    GENERATED_USTRUCT_BODY()
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Links, meta = (PinShownByDefault))
     FName LeftSocketName;
 
@@ -72,14 +74,20 @@ struct FAnimNode_LegsFabrik : public FAnimNode_SkeletalControlBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FabrikBones)
     FBoneReference RightRootBone;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings)
+    FInputScaleBias AlphaScaleBias;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings, meta=(PinShownByDefault))
+    mutable float Alpha;
+
 public:
 //    virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output) override;
-    virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
+    virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones);// override;
 
     virtual void EvaluateBoneTransforms(USkeletalMeshComponent* SkelComp,
-        FCSPose<FCompactPose>& MeshBases,
+        FCSPose<FCompactPose> &MeshBases,
         TArray<FBoneTransform>& OutBoneTransforms
-    ) override;
+    );// override;
 
     void EvaluateLeftFabrik(
         USkeletalMeshComponent* SkelComp,
@@ -88,15 +96,16 @@ public:
         TArray<FBoneTransform>& OutBoneTransforms
     );
 
-    void Evaluate(FPoseContext &Output) override;
+    virtual void EvaluateComponentSpace(FComponentSpacePoseContext& Output);
+//    void Evaluate(FPoseContext &Output) override;
 
-    virtual bool IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones) override;
+    virtual bool IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones);// override;
     FAnimNode_LegsFabrik();
-
 
 private:
     void SetLegsOffset(LegsOffsets &legsOffsets, float &outHipOffset, float DownOffsetThreshold) const;
     void SetLegsEffectors(const LegsOffsets &legsOffsets, float HipOffset, float DeltaTime);
+    void RotateTarsuses(const float DeltaTime);
     bool FootTrace(const FName &SocketName, float DownOffsetThreshold,
         float &OutHipOffset, FHitResult &OutRV_Hit) const;
     void UpdateFabrikNode(const FTransform &Transform, const FBoneReference &TipBone,
@@ -109,7 +118,7 @@ private:
     USkeletalMeshComponent* Component;
     AActor * Actor;
     ACharacter * Character;
-    FCompactPose * MeshBases;
+//    FCompactPose MeshBases;
 
     FVector HipTargetVector;
 

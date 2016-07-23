@@ -9,7 +9,7 @@ FAnimNode_LegsFabrik::FAnimNode_LegsFabrik()
     : Component(nullptr)
     , Actor(nullptr)
     , Character(nullptr)
-    , MeshBases(nullptr)
+//    , MeshBases(nullptr)
     , HipTranslationSpace(BCS_ComponentSpace)
     , Precision(1.f)
     , MaxIterations(10)
@@ -210,7 +210,7 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         //{
             const FBoneContainer& BoneContainer = MeshBases.GetPose().GetBoneContainer();
             FCompactPoseBoneIndex CompactPoseBoneIndex = HipBone.GetCompactPoseIndex(BoneContainer);
-            FTransform NewBoneTM = MeshBases.GetComponentSpaceTransform(CompactPoseBoneIndex);
+            auto NewBoneTM = MeshBases.GetComponentSpaceTransform(CompactPoseBoneIndex);
             FAnimationRuntime::ConvertCSTransformToBoneSpace(SkelComp, MeshBases,
                 NewBoneTM, CompactPoseBoneIndex, HipTranslationSpace);
             NewBoneTM.AddToTranslation(HipTargetVector);
@@ -224,6 +224,7 @@ void FAnimNode_LegsFabrik::EvaluateBoneTransforms(
         UE_LOG(LogTemp, Error, TEXT("Legs IK is not working"));
     }
 }
+
 
 //void FAnimNode_LegsFabrik::Evaluate(FPoseContext &Output)
 //{
@@ -271,12 +272,14 @@ void FAnimNode_LegsFabrik::InitializeBoneReferences(const FBoneContainer& Requir
 }
 
 //void FAnimNode_LegsFabrik::Evaluate(const FAnimationUpdateContext &Output)
-void FAnimNode_LegsFabrik::Evaluate(FPoseContext &Output)
+//void FAnimNode_LegsFabrik::Evaluate(FPoseContext &Output)
 //void FAnimNode_LegsFabrik::UpdateInternal(const FAnimationUpdateContext &Output)
+void FAnimNode_LegsFabrik::EvaluateComponentSpace(FComponentSpacePoseContext &Output)
 {
+    auto &ForwardedPose = Output.Pose;
     Actor = Output.AnimInstanceProxy->GetSkelMeshComponent()->GetOwner();
     Character = Cast<ACharacter>(Actor);
-    MeshBases = &Output.Pose;
+    auto &MeshBases = ForwardedPose.GetPose();
 
 //    ComponentPose.EvaluateComponentSpace(Output);
 
@@ -343,7 +346,7 @@ void FAnimNode_LegsFabrik::Evaluate(FPoseContext &Output)
             // Animates left tarsus rotation.
             BoneTransforms.RemoveAt(0, BoneTransforms.Num());
 
-            const FBoneContainer& BoneContainer = MeshBases->GetBoneContainer();
+            const FBoneContainer& BoneContainer = MeshBases.GetBoneContainer();
             FCompactPoseBoneIndex CompactPoseBoneIndex = LeftTipBone.GetCompactPoseIndex(BoneContainer);
             FTransform NewBoneTM = ForwardedPose.GetComponentSpaceTransform(CompactPoseBoneIndex);
 

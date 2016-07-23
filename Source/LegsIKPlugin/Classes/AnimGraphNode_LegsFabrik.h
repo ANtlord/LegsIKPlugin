@@ -8,11 +8,12 @@
 
 #include "AnimGraphNode_LegsFabrik.generated.h"
 
+//class UAnimGraphNode_LegsFabrik : public UAnimGraphNode_SkeletalControlBase
 /**
  * 
  */
 UCLASS(MinimalAPI)
-class UAnimGraphNode_LegsFabrik : public UAnimGraphNode_SkeletalControlBase
+class UAnimGraphNode_LegsFabrik : public UAnimGraphNode_Base
 {
 	GENERATED_UCLASS_BODY()
     UPROPERTY(EditAnywhere, Category = Settings)
